@@ -7,6 +7,7 @@
 
 #include <QMainWindow>
 #include <QtSerialPort/QSerialPort>
+ #include <QNetworkReply>
 
 namespace Ui {
 class MainWindow;
@@ -23,25 +24,28 @@ public:
 private:
     Ui::MainWindow *ui;
 
-    QSerialPort *serial;
-    QString receiveBuffer;
-    stGPSdata currentGPSdata;
+    QSerialPort *m_serialPort;
+    QString m_receiveBuffer;
+    stGPSdata m_currentGPSdata;
 
-     QNetworkAccessManager *networkManager;
-     QString serverAdress;
+     QNetworkAccessManager *m_networkManager;
+     QNetworkReply *m_reply;
+     QString m_serverAdress;
 
-    stSerialPortSettings currentPortSettings;
+    stSerialPortSettings m_currentPortSettings;
 
     bool getSerialPortSettings();
     bool openSerialPort();
     void convertToDecimalCoordinates(QString nmeaData, QString alignment, QString &decimalData);
 
-    bool sendDataToServer();
+    void sendDataToServer();
 
 
 private slots:
     void handleError(QSerialPort::SerialPortError error);
-     void serialDataReceived();
+    void serialDataReceived();
+    void networkReplyReceived();
+    void networkReplyError(QNetworkReply::NetworkError error);
 };
 
 #endif // MAINWINDOW_H

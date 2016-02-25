@@ -11,10 +11,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    serial = new QSerialPort(this);
+    m_serialPort = new QSerialPort(this);
 
-    *networkManager = new QNetworkAccessManager;
-    serverAdress = "http://web568.lenny.servertools24.de/raspiGPS/raspiCarGpsReceive.php";
+    m_networkManager = new QNetworkAccessManager;
+    m_serverAdress = "http://web568.lenny.servertools24.de/raspiGPS/raspiCarGpsReceive.php";
 
     if(getSerialPortSettings() == true)
     {
@@ -23,9 +23,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     }
 
-    connect(serial, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+    connect(m_serialPort, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
 
-     connect(serial, SIGNAL(readyRead()), this, SLOT(serialDataReceived()));
+     connect(m_serialPort, SIGNAL(readyRead()), this, SLOT(serialDataReceived()));
 
 }
 
@@ -43,7 +43,7 @@ bool MainWindow::getSerialPortSettings()
         //the number 8963 (in hex) is the ID from my GPS-receiver
         if(info.productIdentifier() == 8963 )
         {
-            currentPortSettings.portName = info.portName();
+            m_currentPortSettings.portName = info.portName();
             foundGPSreceiver = true;
             qDebug() <<"GPS-receiver found on port:" << info.portName();
             qDebug() << "description: " << info.description();
@@ -57,11 +57,11 @@ if(foundGPSreceiver == true)
 {
     //set all other settings
 
-    currentPortSettings.baudRate = QSerialPort::Baud4800;
-    currentPortSettings.dataBits = QSerialPort::Data8;
-    currentPortSettings.flowControl = QSerialPort::NoFlowControl;
-    currentPortSettings.parity = QSerialPort::NoParity;
-    currentPortSettings.stopBits = QSerialPort::OneStop;
+    m_currentPortSettings.baudRate = QSerialPort::Baud4800;
+    m_currentPortSettings.dataBits = QSerialPort::Data8;
+    m_currentPortSettings.flowControl = QSerialPort::NoFlowControl;
+    m_currentPortSettings.parity = QSerialPort::NoParity;
+    m_currentPortSettings.stopBits = QSerialPort::OneStop;
 
 }
 else
@@ -76,15 +76,15 @@ else
 bool MainWindow::openSerialPort()
 {
     //first set the current settings
-    serial->setPortName(currentPortSettings.portName);
-    serial->setBaudRate(currentPortSettings.baudRate);
-    serial->setDataBits(currentPortSettings.dataBits);
-    serial->setFlowControl(currentPortSettings.flowControl);
-    serial->setParity(currentPortSettings.parity);
-    serial->setStopBits(currentPortSettings.stopBits);
+    m_serialPort->setPortName(m_currentPortSettings.portName);
+    m_serialPort->setBaudRate(m_currentPortSettings.baudRate);
+    m_serialPort->setDataBits(m_currentPortSettings.dataBits);
+    m_serialPort->setFlowControl(m_currentPortSettings.flowControl);
+    m_serialPort->setParity(m_currentPortSettings.parity);
+    m_serialPort->setStopBits(m_currentPortSettings.stopBits);
 
 
-     if (serial->open(QIODevice::ReadWrite))
+     if (m_serialPort->open(QIODevice::ReadWrite))
      {
          qDebug()<<"serial port successfully opened";
 
@@ -125,7 +125,7 @@ void MainWindow::convertToDecimalCoordinates(QString nmeaData, QString alignment
         decimalData =QString::number(decimalDataDouble);
 
     }
-    //5 characters = longitude
+    //5 characters = longitudenetworkReplyError
     else
     {
         // nmeaData =XXXYY.ZZZZ
@@ -146,11 +146,30 @@ void MainWindow::convertToDecimalCoordinates(QString nmeaData, QString alignment
     }
 }
 
-bool MainWindow::sendDataToServer()
+void MainWindow::sendDataToServer()
 {
     //generate the post-data
+    QString dataToSend;
+
+    dataToSend.append("timeStamp=" + m_currentGPSdata.timeStamp);
+    dataToSend.append("&longitudeDecimal=" + m_currentGPSdata.longitudeDecimal);
+    dataToSend.append("&latitudeDecimal=" + m_currentGPSdata.latitudeDecimal);
+    dataToSend.append("&altitude=" + m_currentGPSdata.altitude);
+    dataToSend.append("&satelliteAmount=" + m_currentGPSdata.satelliteAmount);
+    dataToSend.append("&horizontalPrecision=" + m_currentGPSdata.horizontalPrecision);
+
+    QByteArray dataByteArray = dataToSend.toLatin1();
+
+    QNetworkRequest request;
+    request.setUrl(QUrl(m_serverAdress));
+    request.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
+    m_reply = m_networkManager->post(request,dataByteArray);
+
+    connect(m_reply, SIGNAL(readyRead()), this, SLOT(networkReplyReceived()));
+    connect(m_reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkReplyError(QNetworkReply::NetworkError)));
 
 
+    //name1=value1&name2=value2
 
 
 
@@ -166,16 +185,16 @@ void MainWindow::handleError(QSerialPort::SerialPortError error)
 void MainWindow::serialDataReceived()
 {
 
-    QString currentReceivedData = QString(serial->readAll());
+    QString currentReceivedData = QString(m_serialPort->readAll());
 
     //add the buffered data from the last receive run
-    currentReceivedData.prepend(receiveBuffer);
+    currentReceivedData.prepend(m_receiveBuffer);
 
     //search for the start-character "$"
     QStringList currentGPSsentences = currentReceivedData.split("$");
     //save the last incomplete part in the buffer
-    receiveBuffer.clear();
-    receiveBuffer.append(currentGPSsentences.last());
+    m_receiveBuffer.clear();
+    m_receiveBuffer.append(currentGPSsentences.last());
     //remove the last incomplete sentence from the buffer
     currentGPSsentences.removeLast();
 
@@ -191,18 +210,21 @@ void MainWindow::serialDataReceived()
             //$GPGGA,191410,4735.5634,N,00739.3538,E,1,04,4.4,351.5,M,48.0,M,,*45
 
             //save the current GPS-data
-            currentGPSdata.timeStamp = singleSentenceData.at(1);
-            currentGPSdata.latitude = singleSentenceData.at(2);
-            currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
-            currentGPSdata.longitude = singleSentenceData.at(4);
-            currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
-            currentGPSdata.satelliteAmount= singleSentenceData.at(7);
-            currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
-            currentGPSdata.altitude = singleSentenceData.at(9);
+            m_currentGPSdata.timeStamp = singleSentenceData.at(1);
+            m_currentGPSdata.latitude = singleSentenceData.at(2);
+            m_currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
+            m_currentGPSdata.longitude = singleSentenceData.at(4);
+            m_currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
+            m_currentGPSdata.satelliteAmount= singleSentenceData.at(7);
+            m_currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
+            m_currentGPSdata.altitude = singleSentenceData.at(9);
 
             //convert position to decimal-degree
-            convertToDecimalCoordinates(currentGPSdata.latitude, currentGPSdata.latitudeAlignment, currentGPSdata.latitudeDecimal);
-            convertToDecimalCoordinates(currentGPSdata.longitude, currentGPSdata.longitudeAlignment, currentGPSdata.longitudeDecimal);
+            convertToDecimalCoordinates(m_currentGPSdata.latitude, m_currentGPSdata.latitudeAlignment, m_currentGPSdata.latitudeDecimal);
+            convertToDecimalCoordinates(m_currentGPSdata.longitude, m_currentGPSdata.longitudeAlignment, m_currentGPSdata.longitudeDecimal);
+
+            //send data to server
+            sendDataToServer();
 
             qDebug() << "test";
 
@@ -213,3 +235,14 @@ void MainWindow::serialDataReceived()
 
 
 }
+
+void MainWindow::networkReplyReceived()
+{
+    qDebug() << "network reply" <<  m_reply->readAll();
+}
+
+void MainWindow::networkReplyError(QNetworkReply::NetworkError error)
+{
+    qDebug() <<"networkReplyError received: " << error ;
+}
+
