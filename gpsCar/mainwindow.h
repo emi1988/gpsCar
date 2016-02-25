@@ -27,11 +27,16 @@ private:
     QString receiveBuffer;
     stGPSdata currentGPSdata;
 
+     QNetworkAccessManager *networkManager;
+     QString serverAdress;
+
     stSerialPortSettings currentPortSettings;
 
     bool getSerialPortSettings();
     bool openSerialPort();
     void convertToDecimalCoordinates(QString nmeaData, QString alignment, QString &decimalData);
+
+    bool sendDataToServer();
 
 
 private slots:

@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
+#include <QNetworkAccessManager>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -11,6 +12,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     serial = new QSerialPort(this);
+
+    *networkManager = new QNetworkAccessManager;
+    serverAdress = "http://web568.lenny.servertools24.de/raspiGPS/raspiCarGpsReceive.php";
 
     if(getSerialPortSettings() == true)
     {
@@ -140,6 +144,16 @@ void MainWindow::convertToDecimalCoordinates(QString nmeaData, QString alignment
         decimalData =QString::number(decimalDataDouble);
 
     }
+}
+
+bool MainWindow::sendDataToServer()
+{
+    //generate the post-data
+
+
+
+
+
 }
 
 void MainWindow::handleError(QSerialPort::SerialPortError error)
