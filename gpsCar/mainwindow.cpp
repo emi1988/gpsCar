@@ -95,6 +95,53 @@ bool MainWindow::openSerialPort()
 
 }
 
+void MainWindow::convertToDecimalCoordinates(QString nmeaData, QString alignment, QString &decimalData)
+{
+
+    QStringList splitedData =  nmeaData.split(".");
+
+    //4 characters = latitude
+    if(splitedData.at(0).size() == 4)
+    {
+        // nmeaData = XXYY.ZZZZ
+        //conversion XXYY.ZZZZ ⇒ XX° + (YY.ZZZZ / 60)°
+
+        int xx = splitedData.at(0).left(2).toInt();
+        int yy = splitedData.at(0).right(2).toInt();
+        int zzzz = splitedData.at(1).toInt();
+
+        double decimalDataDouble = xx + ( (yy + zzzz*0.0001) / 60 );
+
+        //values under the equator are negativ
+        if(alignment.compare("S") == 0)
+        {
+            decimalDataDouble = decimalDataDouble * (-1.0);
+        }
+
+        decimalData =QString::number(decimalDataDouble);
+
+    }
+    //5 characters = longitude
+    else
+    {
+        // nmeaData =XXXYY.ZZZZ
+        //conversion XXXYY.ZZZZ ⇒ XXX° + (YY.ZZZZ / 60)°
+
+        int xxx = splitedData.at(0).left(3).toInt();
+        int yy = splitedData.at(0).right(2).toInt();
+        int zzzz = splitedData.at(1).toInt();
+
+        double decimalDataDouble = xxx + ( (yy + zzzz*0.0001) / 60 );
+
+        if(alignment.compare("W") == 0)
+        {
+            decimalDataDouble = decimalDataDouble * (-1.0);
+        }
+        decimalData =QString::number(decimalDataDouble);
+
+    }
+}
+
 void MainWindow::handleError(QSerialPort::SerialPortError error)
 {
 
@@ -112,7 +159,6 @@ void MainWindow::serialDataReceived()
 
     //search for the start-character "$"
     QStringList currentGPSsentences = currentReceivedData.split("$");
-
     //save the last incomplete part in the buffer
     receiveBuffer.clear();
     receiveBuffer.append(currentGPSsentences.last());
@@ -127,6 +173,24 @@ void MainWindow::serialDataReceived()
         {
             QStringList singleSentenceData = currentSentence.split(",");
             qDebug() << "GPGGA-Data: " << singleSentenceData;
+            //GPGGA-Data:  ("GPGGA", "213225.936", "", "", "", "", "0", "00", "", "", "M", "0.0", "M", "", "0000*5F ")
+            //$GPGGA,191410,4735.5634,N,00739.3538,E,1,04,4.4,351.5,M,48.0,M,,*45
+
+            //save the current GPS-data
+            currentGPSdata.timeStamp = singleSentenceData.at(1);
+            currentGPSdata.latitude = singleSentenceData.at(2);
+            currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
+            currentGPSdata.longitude = singleSentenceData.at(4);
+            currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
+            currentGPSdata.satelliteAmount= singleSentenceData.at(7);
+            currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
+            currentGPSdata.altitude = singleSentenceData.at(9);
+
+            //convert position to decimal-degree
+            convertToDecimalCoordinates(currentGPSdata.latitude, currentGPSdata.latitudeAlignment, currentGPSdata.latitudeDecimal);
+            convertToDecimalCoordinates(currentGPSdata.longitude, currentGPSdata.longitudeAlignment, currentGPSdata.longitudeDecimal);
+
+            qDebug() << "test";
 
         }
     }

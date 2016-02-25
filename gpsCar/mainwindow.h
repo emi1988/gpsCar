@@ -25,12 +25,13 @@ private:
 
     QSerialPort *serial;
     QString receiveBuffer;
+    stGPSdata currentGPSdata;
 
     stSerialPortSettings currentPortSettings;
 
     bool getSerialPortSettings();
     bool openSerialPort();
-
+    void convertToDecimalCoordinates(QString nmeaData, QString alignment, QString &decimalData);
 
 
 private slots:
