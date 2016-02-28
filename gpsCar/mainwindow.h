@@ -7,7 +7,8 @@
 
 #include <QMainWindow>
 #include <QtSerialPort/QSerialPort>
- #include <QNetworkReply>
+#include <QNetworkReply>
+#include <QDateTime>
 
 namespace Ui {
 class MainWindow;
@@ -28,9 +29,11 @@ private:
     QString m_receiveBuffer;
     stGPSdata m_currentGPSdata;
 
-     QNetworkAccessManager *m_networkManager;
-     QNetworkReply *m_reply;
-     QString m_serverAdress;
+    QNetworkAccessManager *m_networkManager;
+    QNetworkReply *m_reply;
+    QString m_serverAdress;
+    quint64 m_lastSendetTime;
+    int m_secondsBetweenWebSend;
 
     stSerialPortSettings m_currentPortSettings;
 

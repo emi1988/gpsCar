@@ -11,6 +11,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    m_secondsBetweenWebSend = 5;
+    m_lastSendetTime = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000;
+
     m_serialPort = new QSerialPort(this);
 
     m_networkManager = new QNetworkAccessManager;
@@ -151,7 +155,8 @@ void MainWindow::sendDataToServer()
     //generate the post-data
     QString dataToSend;
 
-    dataToSend.append("timeStamp=" + m_currentGPSdata.timeStamp);
+    dataToSend.append("timeStampGPS=" + m_currentGPSdata.timeStampGPS);
+    dataToSend.append("&timeStampRapi=" + m_currentGPSdata.timeStampRapi);
     dataToSend.append("&longitudeDecimal=" + m_currentGPSdata.longitudeDecimal);
     dataToSend.append("&latitudeDecimal=" + m_currentGPSdata.latitudeDecimal);
     dataToSend.append("&altitude=" + m_currentGPSdata.altitude);
@@ -167,11 +172,6 @@ void MainWindow::sendDataToServer()
 
     connect(m_reply, SIGNAL(readyRead()), this, SLOT(networkReplyReceived()));
     connect(m_reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkReplyError(QNetworkReply::NetworkError)));
-
-
-    //name1=value1&name2=value2
-
-
 
 }
 
@@ -202,32 +202,46 @@ void MainWindow::serialDataReceived()
 
     foreach (QString currentSentence, currentGPSsentences)
     {
-        if(currentSentence.startsWith("GPGGA"))
+        QStringList singleSentenceData = currentSentence.split(",");
+
+        //just use the GPGGA-Information and check if it's already received completely
+        if((singleSentenceData.at(0).compare("GPGGA")== 0) & (singleSentenceData.count() == 15))
         {
-            QStringList singleSentenceData = currentSentence.split(",");
-            qDebug() << "GPGGA-Data: " << singleSentenceData;
-            //GPGGA-Data:  ("GPGGA", "213225.936", "", "", "", "", "0", "00", "", "", "M", "0.0", "M", "", "0000*5F ")
-            //$GPGGA,191410,4735.5634,N,00739.3538,E,1,04,4.4,351.5,M,48.0,M,,*45
 
-            //save the current GPS-data
-            m_currentGPSdata.timeStamp = singleSentenceData.at(1);
-            m_currentGPSdata.latitude = singleSentenceData.at(2);
-            m_currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
-            m_currentGPSdata.longitude = singleSentenceData.at(4);
-            m_currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
-            m_currentGPSdata.satelliteAmount= singleSentenceData.at(7);
-            m_currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
-            m_currentGPSdata.altitude = singleSentenceData.at(9);
+            //just save/send the gps-data if the m_msecondsBetweenWebSend is over
+            quint64 currentTime = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000;
 
-            //convert position to decimal-degree
-            convertToDecimalCoordinates(m_currentGPSdata.latitude, m_currentGPSdata.latitudeAlignment, m_currentGPSdata.latitudeDecimal);
-            convertToDecimalCoordinates(m_currentGPSdata.longitude, m_currentGPSdata.longitudeAlignment, m_currentGPSdata.longitudeDecimal);
+            if(currentTime > (m_lastSendetTime + m_secondsBetweenWebSend) )
+            {
+                m_lastSendetTime = currentTime;
 
-            //send data to server
-            sendDataToServer();
+                QStringList singleSentenceData = currentSentence.split(",");
+                qDebug() << "GPGGA-Data: " << singleSentenceData;
+                qDebug() << "RapiTimestamp: " << currentTime;
+                //GPGGA-Data:  ("GPGGA", "213225.936", "", "", "", "", "0", "00", "", "", "M", "0.0", "M", "", "0000*5F ")
+                //$GPGGA,191410,4735.5634,N,00739.3538,E,1,04,4.4,351.5,M,48.0,M,,*45    //sum =15
 
-            qDebug() << "test";
+                //save the current GPS-data
+                m_currentGPSdata.timeStampGPS = singleSentenceData.at(1);
+                m_currentGPSdata.latitude = singleSentenceData.at(2);
+                m_currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
+                m_currentGPSdata.longitude = singleSentenceData.at(4);
+                m_currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
+                m_currentGPSdata.satelliteAmount= singleSentenceData.at(7);
+                m_currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
+                m_currentGPSdata.altitude = singleSentenceData.at(9);
 
+                m_currentGPSdata.timeStampRapi = QString::number(currentTime);
+
+                //convert position to decimal-degree
+                convertToDecimalCoordinates(m_currentGPSdata.latitude, m_currentGPSdata.latitudeAlignment, m_currentGPSdata.latitudeDecimal);
+                convertToDecimalCoordinates(m_currentGPSdata.longitude, m_currentGPSdata.longitudeAlignment, m_currentGPSdata.longitudeDecimal);
+
+                //send data to server
+                sendDataToServer();
+
+                qDebug() << "test";
+            }
         }
     }
 

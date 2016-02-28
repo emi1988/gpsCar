@@ -16,7 +16,7 @@ typedef struct stSerialPortSettings
 
 typedef struct stGPSdata
 {
-    QString timeStamp;
+    QString timeStampGPS;
     QString longitude; //längengrad
     QString longitudeAlignment; //E(ast) or W(est)
     QString latitude; //breitengrad
@@ -27,6 +27,7 @@ typedef struct stGPSdata
 
     QString longitudeDecimal;
     QString latitudeDecimal;
+    QString timeStampRapi;
 };
 
 
