@@ -5,6 +5,10 @@
 #include "defs.h"
 #endif
 
+#ifndef DBMANAGER_H
+#include "dbManager.h"
+#endif
+
 #include <QMainWindow>
 #include <QtSerialPort/QSerialPort>
 #include <QNetworkReply>
@@ -34,6 +38,7 @@ private:
     QString m_serverAdress;
     quint64 m_lastSendetTime;
     int m_secondsBetweenWebSend;
+    dbManager m_dbManager;
 
     stSerialPortSettings m_currentPortSettings;
 

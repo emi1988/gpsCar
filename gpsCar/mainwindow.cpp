@@ -5,12 +5,17 @@
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QNetworkAccessManager>
+#include <QDir>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    //init the database for buffering the gps data if there's no network
+    QString dbPath = QDir::currentPath() + "/sendBuffer.db";
+    m_dbManager = dbManager(dbPath);
 
     m_secondsBetweenWebSend = 5;
     m_lastSendetTime = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000;
@@ -152,6 +157,7 @@ void MainWindow::convertToDecimalCoordinates(QString nmeaData, QString alignment
 
 void MainWindow::sendDataToServer()
 {
+
     //generate the post-data
     QString dataToSend;
 
@@ -162,6 +168,9 @@ void MainWindow::sendDataToServer()
     dataToSend.append("&altitude=" + m_currentGPSdata.altitude);
     dataToSend.append("&satelliteAmount=" + m_currentGPSdata.satelliteAmount);
     dataToSend.append("&horizontalPrecision=" + m_currentGPSdata.horizontalPrecision);
+
+    //fist save the data into the buffer-database
+    m_dbManager.addGpsData(dataToSend);
 
     QByteArray dataByteArray = dataToSend.toLatin1();
 

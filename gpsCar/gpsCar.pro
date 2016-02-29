@@ -6,6 +6,7 @@
 
 QT       += core gui
 QT += network
+QT += sql
 #for qt5 or greater use :
 #QT += serialport
 
@@ -19,9 +20,11 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    dbManager.cpp
 
 HEADERS  += mainwindow.h \
-    defs.h
+    defs.h \
+    dbManager.h
 
 FORMS    += mainwindow.ui
