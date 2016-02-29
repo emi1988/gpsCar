@@ -261,7 +261,16 @@ void MainWindow::serialDataReceived()
 
 void MainWindow::networkReplyReceived()
 {
-    qDebug() << "network reply" <<  m_reply->readAll();
+    QString replyString = QString(m_reply->readAll());
+    qDebug() << "network reply" << replyString;
+
+    QStringList splitedString = replyString.split(":");
+
+    QString rapiTimestamp = splitedString.at(1);
+
+    m_dbManager.removeGpsData(rapiTimestamp);
+
+
 }
 
 void MainWindow::networkReplyError(QNetworkReply::NetworkError error)

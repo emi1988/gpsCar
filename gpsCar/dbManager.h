@@ -9,6 +9,7 @@ public:
     dbManager(QString& path);
 
     bool addGpsData(QString data);
+    bool removeGpsData(QString timeStampRapi);
 
 private:
     QSqlDatabase m_sqliteDb;
