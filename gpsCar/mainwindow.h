@@ -46,7 +46,7 @@ private:
     bool openSerialPort();
     void convertToDecimalCoordinates(QString nmeaData, QString alignment, QString &decimalData);
 
-    void sendDataToServer();
+    void sendDataToServer(stGPSdata gpsDataToSend, bool bufferData);
 
 
 private slots:
@@ -54,6 +54,7 @@ private slots:
     void serialDataReceived();
     void networkReplyReceived();
     void networkReplyError(QNetworkReply::NetworkError error);
+    void resendOldData();
 };
 
 #endif // MAINWINDOW_H

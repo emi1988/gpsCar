@@ -6,6 +6,7 @@
 #include <QtSerialPort/QSerialPortInfo>
 #include <QNetworkAccessManager>
 #include <QDir>
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -34,7 +35,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(m_serialPort, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
 
-     connect(m_serialPort, SIGNAL(readyRead()), this, SLOT(serialDataReceived()));
+    connect(m_serialPort, SIGNAL(readyRead()), this, SLOT(serialDataReceived()));
+
+
+    QTimer *timerSendBuffer = new QTimer(this);
+    connect(timerSendBuffer, SIGNAL(timeout()), this, SLOT(resendOldData()));
+    timerSendBuffer->start(1000);
 
 }
 
@@ -155,32 +161,40 @@ void MainWindow::convertToDecimalCoordinates(QString nmeaData, QString alignment
     }
 }
 
-void MainWindow::sendDataToServer()
+void MainWindow::sendDataToServer(stGPSdata gpsDataToSend, bool bufferData)
 {
 
     //generate the post-data
-    QString dataToSend;
+    QString dataToSendString;
 
-    dataToSend.append("timeStampGPS=" + m_currentGPSdata.timeStampGPS);
-    dataToSend.append("&timeStampRapi=" + m_currentGPSdata.timeStampRapi);
-    dataToSend.append("&longitudeDecimal=" + m_currentGPSdata.longitudeDecimal);
-    dataToSend.append("&latitudeDecimal=" + m_currentGPSdata.latitudeDecimal);
-    dataToSend.append("&altitude=" + m_currentGPSdata.altitude);
-    dataToSend.append("&satelliteAmount=" + m_currentGPSdata.satelliteAmount);
-    dataToSend.append("&horizontalPrecision=" + m_currentGPSdata.horizontalPrecision);
+    dataToSendString.append("timeStampGPS=" + gpsDataToSend.timeStampGPS);
+    dataToSendString.append("&timeStampRapi=" + gpsDataToSend.timeStampRapi);
+    dataToSendString.append("&longitudeDecimal=" + gpsDataToSend.longitudeDecimal);
+    dataToSendString.append("&latitudeDecimal=" + gpsDataToSend.latitudeDecimal);
+    dataToSendString.append("&altitude=" + gpsDataToSend.altitude);
+    dataToSendString.append("&satelliteAmount=" + gpsDataToSend.satelliteAmount);
+    dataToSendString.append("&horizontalPrecision=" + gpsDataToSend.horizontalPrecision);
 
-    //fist save the data into the buffer-database
-    m_dbManager.addGpsData(dataToSend);
+    if(bufferData == true)
+    {
+        //fist save the data into the buffer-database
+        m_dbManager.addGpsData(dataToSendString);
+    }
 
-    QByteArray dataByteArray = dataToSend.toLatin1();
+    QByteArray dataByteArray = dataToSendString.toLatin1();
 
     QNetworkRequest request;
     request.setUrl(QUrl(m_serverAdress));
     request.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
-    m_reply = m_networkManager->post(request,dataByteArray);
+    //m_reply = m_networkManager->post(request,dataByteArray);
 
-    connect(m_reply, SIGNAL(readyRead()), this, SLOT(networkReplyReceived()));
-    connect(m_reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkReplyError(QNetworkReply::NetworkError)));
+    QNetworkReply *reply = m_networkManager->post(request,dataByteArray);
+
+    connect(reply, SIGNAL(finished()), this, SLOT(networkReplyReceived()));
+
+
+ //   connect(m_reply, SIGNAL(readyRead()), this, SLOT(networkReplyReceived()));
+   // connect(m_reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkReplyError(QNetworkReply::NetworkError)));
 
 }
 
@@ -247,9 +261,8 @@ void MainWindow::serialDataReceived()
                 convertToDecimalCoordinates(m_currentGPSdata.longitude, m_currentGPSdata.longitudeAlignment, m_currentGPSdata.longitudeDecimal);
 
                 //send data to server
-                sendDataToServer();
+                sendDataToServer(m_currentGPSdata, true);
 
-                qDebug() << "test";
             }
         }
     }
@@ -261,20 +274,56 @@ void MainWindow::serialDataReceived()
 
 void MainWindow::networkReplyReceived()
 {
-    QString replyString = QString(m_reply->readAll());
+
+    //QString replyString = QString(m_reply->readAll());
+    QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
+   // QNetworkReply *reply = qobject_cast(sender());
+
+    QString replyString = reply->readAll();
     qDebug() << "network reply" << replyString;
+
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    qDebug() << "Reply status code: " + QString::number(statusCode);
 
     QStringList splitedString = replyString.split(":");
 
-    QString rapiTimestamp = splitedString.at(1);
+    if(splitedString.count() > 1)
+    {
+        QString rapiTimestamp = splitedString.at(1);
 
-    m_dbManager.removeGpsData(rapiTimestamp);
+        m_dbManager.removeGpsData(rapiTimestamp);
+    }
 
-
+    reply->deleteLater();
 }
 
 void MainWindow::networkReplyError(QNetworkReply::NetworkError error)
 {
     qDebug() <<"networkReplyError received: " << error ;
+}
+
+void MainWindow::resendOldData()
+{
+    QList<stGPSdata> oldGpsData;
+
+    //just get gps-data which is a little bit older,
+    //because we could get a response from data which is already send
+    //and we don't want to save data twice in the web-database
+    quint64 currentTime = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000;
+
+
+    //take all data older than the current time minus 10 seconds
+    m_dbManager.getOldGpsData(QString::number(currentTime-10), oldGpsData);
+
+
+    foreach (stGPSdata currentDataSet, oldGpsData)
+    {
+        //retry to send the data to the server
+        //and don't save the data again in the buffer, because it's already saved
+        sendDataToServer(currentDataSet, false);
+        qDebug() << "resend data with timestamp: " + currentDataSet.timeStampRapi + " \n";
+    }
+
 }
 

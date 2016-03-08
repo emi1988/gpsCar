@@ -30,7 +30,7 @@ dbManager::dbManager(QString &path)
         {
             QString createStatement = " CREATE TABLE \"sendBuffer\" ";
             createStatement.append("(`ID` INTEGER PRIMARY KEY AUTOINCREMENT,");
-            createStatement.append(" `timeStampGPS` TEXT, `timeStampRapi` TEXT, `longitudeDecimal` TEXT, `latitudeDecimal` TEXT, `altitude` TEXT, `satelliteAmount` TEXT, `horizontalPrecision` TEXT )");
+            createStatement.append(" `timeStampGPS` TEXT, `timeStampRapi` BIGINT, `longitudeDecimal` TEXT, `latitudeDecimal` TEXT, `altitude` TEXT, `satelliteAmount` TEXT, `horizontalPrecision` TEXT )");
             QSqlQuery query(m_sqliteDb);
 
             query.prepare(createStatement);
@@ -106,7 +106,7 @@ bool dbManager::removeGpsData(QString timeStampRapi)
     if(query.exec())
     {
         success = true;
-        qDebug() << "value removed from buffer \n";
+        qDebug() << "RapiTimestamp : " + timeStampRapi + " removed from buffer.\n";
     }
     else
     {
@@ -115,4 +115,28 @@ bool dbManager::removeGpsData(QString timeStampRapi)
     }
 
     return success;
+}
+
+bool dbManager::getOldGpsData(QString maxTimestampRapi, QList<stGPSdata> &selectedData)
+{
+    QString sqlCommand = "SELECT * FROM `sendBuffer` WHERE `timeStampRapi` < " + maxTimestampRapi;
+
+    //get all database-entries which fit to the select statement
+    stGPSdata currentData;
+    QSqlQuery query(sqlCommand);
+    while (query.next())
+    {
+        currentData.timeStampGPS = query.value(1).toString();
+        currentData.timeStampRapi = query.value(2).toString();
+        currentData.longitudeDecimal = query.value(3).toString();
+        currentData.latitudeDecimal = query.value(4).toString();
+        currentData.altitude = query.value(5).toString();
+        currentData.satelliteAmount = query.value(6).toString();
+        currentData.horizontalPrecision = query.value(7).toString();
+
+        selectedData.append(currentData);
+
+    }
+
+    return true;
 }

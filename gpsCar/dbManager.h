@@ -2,6 +2,10 @@
 #define DBMANAGER_H
 #include <QSqlDatabase>
 
+#ifndef DEFS_H
+#include "defs.h"
+#endif
+
 class dbManager
 {
 public:
@@ -10,6 +14,7 @@ public:
 
     bool addGpsData(QString data);
     bool removeGpsData(QString timeStampRapi);
+    bool getOldGpsData(QString maxTimestampRapi, QList<stGPSdata> &selectedData);
 
 private:
     QSqlDatabase m_sqliteDb;
