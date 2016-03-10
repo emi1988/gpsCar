@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QTimer *timerSendBuffer = new QTimer(this);
     connect(timerSendBuffer, SIGNAL(timeout()), this, SLOT(resendOldData()));
-    timerSendBuffer->start(1000);
+    timerSendBuffer->start(10000);
 
 }
 
