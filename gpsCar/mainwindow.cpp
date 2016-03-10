@@ -256,30 +256,41 @@ void MainWindow::serialDataReceived()
                 }
 
                 qDebug() << "RapiTimestamp: " << currentTime;
-                ui->textEditOutput->append("RapiTimestamp: " + currentTime);
+                ui->textEditOutput->append("RapiTimestamp: " + QString::number(currentTime));
 
                 //GPGGA-Data:  ("GPGGA", "213225.936", "", "", "", "", "0", "00", "", "", "M", "0.0", "M", "", "0000*5F ")
                 //$GPGGA,191410,4735.5634,N,00739.3538,E,1,04,4.4,351.5,M,48.0,M,,*45    //sum =15
 
-                //save the current GPS-data
-                m_currentGPSdata.timeStampGPS = singleSentenceData.at(1);
-                m_currentGPSdata.latitude = singleSentenceData.at(2);
-                m_currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
-                m_currentGPSdata.longitude = singleSentenceData.at(4);
-                m_currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
-                m_currentGPSdata.satelliteAmount= singleSentenceData.at(7);
-                m_currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
-                m_currentGPSdata.altitude = singleSentenceData.at(9);
+                //check if received data is empty because of no gps-signal
+                QString testData = singleSentenceData.at(2);
+                if(testData.compare("") == 0)
+                {
+                    qDebug() << "gps-data is empty";
+                    ui->textEditOutput->append("gps-data is empty");
+                }
+                else
+                {
+                    //gps-data is not empty -> process it
 
-                m_currentGPSdata.timeStampRapi = QString::number(currentTime);
+                    //save the current GPS-data
+                    m_currentGPSdata.timeStampGPS = singleSentenceData.at(1);
+                    m_currentGPSdata.latitude = singleSentenceData.at(2);
+                    m_currentGPSdata.latitudeAlignment = singleSentenceData.at(3);
+                    m_currentGPSdata.longitude = singleSentenceData.at(4);
+                    m_currentGPSdata.longitudeAlignment = singleSentenceData.at(5);
+                    m_currentGPSdata.satelliteAmount= singleSentenceData.at(7);
+                    m_currentGPSdata.horizontalPrecision = singleSentenceData.at(8);
+                    m_currentGPSdata.altitude = singleSentenceData.at(9);
 
-                //convert position to decimal-degree
-                convertToDecimalCoordinates(m_currentGPSdata.latitude, m_currentGPSdata.latitudeAlignment, m_currentGPSdata.latitudeDecimal);
-                convertToDecimalCoordinates(m_currentGPSdata.longitude, m_currentGPSdata.longitudeAlignment, m_currentGPSdata.longitudeDecimal);
+                    m_currentGPSdata.timeStampRapi = QString::number(currentTime);
 
-                //send data to server
-                sendDataToServer(m_currentGPSdata, true);
+                    //convert position to decimal-degree
+                    convertToDecimalCoordinates(m_currentGPSdata.latitude, m_currentGPSdata.latitudeAlignment, m_currentGPSdata.latitudeDecimal);
+                    convertToDecimalCoordinates(m_currentGPSdata.longitude, m_currentGPSdata.longitudeAlignment, m_currentGPSdata.longitudeDecimal);
 
+                    //send data to server
+                    sendDataToServer(m_currentGPSdata, true);
+                }
             }
         }
     }
