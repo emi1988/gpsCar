@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QSqlQuery>
 #include <QFile>
+#include <QStringList>
 
 dbManager::dbManager()
 {
@@ -20,10 +21,12 @@ dbManager::dbManager(QString &path)
     if (!m_sqliteDb.open())
     {
         qDebug() << "Error: connection with database fail";
+        emit sendText("Error: connection with database fail");
     }
     else
     {
         qDebug() << "Database: connection ok";
+        emit sendText("Database: connection ok");
 
         //if the database was just created above, we have to create a table
         if(dbExists == false)
@@ -37,10 +40,12 @@ dbManager::dbManager(QString &path)
             if(query.exec())
             {
                 qDebug() << "new database and table created";
+                emit sendText("new database and table created");
             }
             else
             {
                 qDebug() << "error: could not create new database and table";
+                emit sendText("error: could not create new database and table");
             }
         }
     }
@@ -83,11 +88,13 @@ bool dbManager::addGpsData(QString data)
     {
         success = true;
         qDebug() << "values saved in database sendbuffer \n";
+        emit sendText("values saved in database sendbuffer \n");
     }
     else
     {
         success = false;
         qDebug() << "could NOT save values in database sendbuffer \n";
+        emit sendText("could NOT save values in database sendbuffer \n");
     }
 
     return success;
@@ -107,11 +114,13 @@ bool dbManager::removeGpsData(QString timeStampRapi)
     {
         success = true;
         qDebug() << "RapiTimestamp : " + timeStampRapi + " removed from buffer.\n";
+        emit sendText( "RapiTimestamp : " + timeStampRapi + " removed from buffer.\n");
     }
     else
     {
         success = false;
         qDebug() << "could NOT remove value from buffer \n";
+        emit sendText("could NOT remove value from buffer \n");
     }
 
     return success;

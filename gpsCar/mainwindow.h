@@ -38,7 +38,7 @@ private:
     QString m_serverAdress;
     quint64 m_lastSendetTime;
     int m_secondsBetweenWebSend;
-    dbManager m_dbManager;
+    dbManager *m_dbManager;
 
     stSerialPortSettings m_currentPortSettings;
 
@@ -55,6 +55,7 @@ private slots:
     void networkReplyReceived();
     void networkReplyError(QNetworkReply::NetworkError error);
     void resendOldData();
+    void updateLogUi(const QString &text);
 };
 
 #endif // MAINWINDOW_H

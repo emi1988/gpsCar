@@ -16,7 +16,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //init the database for buffering the gps data if there's no network
     QString dbPath = QDir::currentPath() + "/sendBuffer.db";
-    m_dbManager = dbManager(dbPath);
+    m_dbManager = new dbManager(dbPath);
+
+    connect(m_dbManager, SIGNAL(sendText(QString)), this, SLOT(updateLogUi(QString)));
 
     m_secondsBetweenWebSend = 5;
     m_lastSendetTime = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000;
@@ -40,7 +42,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QTimer *timerSendBuffer = new QTimer(this);
     connect(timerSendBuffer, SIGNAL(timeout()), this, SLOT(resendOldData()));
-    timerSendBuffer->start(10000);
+    timerSendBuffer->start(15000);
 
 }
 
@@ -64,6 +66,10 @@ bool MainWindow::getSerialPortSettings()
             qDebug() << "description: " << info.description();
             qDebug() << "manufacturer: " << info.manufacturer();
 
+            ui->textEditOutput->append("GPS-receiver found on port:" + info.portName());
+            ui->textEditOutput->append("description: " + info.description());
+            ui->textEditOutput->append("manufacturer: " + info.manufacturer());
+
             break;
         }
     }
@@ -82,6 +88,7 @@ if(foundGPSreceiver == true)
 else
 {
     qDebug() << "GPS-receiver not found ): ";
+    ui->textEditOutput->append( "GPS-receiver not found ): ");
 }
 
     return foundGPSreceiver;
@@ -102,12 +109,13 @@ bool MainWindow::openSerialPort()
      if (m_serialPort->open(QIODevice::ReadWrite))
      {
          qDebug()<<"serial port successfully opened";
-
+         ui->textEditOutput->append("serial port successfully opened");
          return true;
      }
      else
      {
          qDebug()<<"could not open serial port ): ";
+         ui->textEditOutput->append("could not open serial port ): ");
 
          return false;
      }
@@ -178,7 +186,7 @@ void MainWindow::sendDataToServer(stGPSdata gpsDataToSend, bool bufferData)
     if(bufferData == true)
     {
         //fist save the data into the buffer-database
-        m_dbManager.addGpsData(dataToSendString);
+        m_dbManager->addGpsData(dataToSendString);
     }
 
     QByteArray dataByteArray = dataToSendString.toLatin1();
@@ -202,7 +210,7 @@ void MainWindow::handleError(QSerialPort::SerialPortError error)
 {
 
     qDebug() << "QSerialPort Error Number" << error;
-
+    ui->textEditOutput->append("QSerialPort Error Number" + error);
 }
 
 void MainWindow::serialDataReceived()
@@ -240,7 +248,16 @@ void MainWindow::serialDataReceived()
 
                 QStringList singleSentenceData = currentSentence.split(",");
                 qDebug() << "GPGGA-Data: " << singleSentenceData;
+                ui->textEditOutput->append("GPGGA-Data: " );
+
+                foreach (QString sentenceData, singleSentenceData)
+                {
+                     ui->textEditOutput->append(sentenceData);
+                }
+
                 qDebug() << "RapiTimestamp: " << currentTime;
+                ui->textEditOutput->append("RapiTimestamp: " + currentTime);
+
                 //GPGGA-Data:  ("GPGGA", "213225.936", "", "", "", "", "0", "00", "", "", "M", "0.0", "M", "", "0000*5F ")
                 //$GPGGA,191410,4735.5634,N,00739.3538,E,1,04,4.4,351.5,M,48.0,M,,*45    //sum =15
 
@@ -281,10 +298,12 @@ void MainWindow::networkReplyReceived()
 
     QString replyString = reply->readAll();
     qDebug() << "network reply" << replyString;
+    ui->textEditOutput->append("network reply" + replyString);
 
     int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
     qDebug() << "Reply status code: " + QString::number(statusCode);
+    ui->textEditOutput->append("Reply status code: " + QString::number(statusCode));
 
     QStringList splitedString = replyString.split(":");
 
@@ -292,7 +311,7 @@ void MainWindow::networkReplyReceived()
     {
         QString rapiTimestamp = splitedString.at(1);
 
-        m_dbManager.removeGpsData(rapiTimestamp);
+        m_dbManager->removeGpsData(rapiTimestamp);
     }
 
     reply->deleteLater();
@@ -301,6 +320,7 @@ void MainWindow::networkReplyReceived()
 void MainWindow::networkReplyError(QNetworkReply::NetworkError error)
 {
     qDebug() <<"networkReplyError received: " << error ;
+    ui->textEditOutput->append("networkReplyError received: " + error);
 }
 
 void MainWindow::resendOldData()
@@ -314,7 +334,7 @@ void MainWindow::resendOldData()
 
 
     //take all data older than the current time minus 10 seconds
-    m_dbManager.getOldGpsData(QString::number(currentTime-10), oldGpsData);
+    m_dbManager->getOldGpsData(QString::number(currentTime-10), oldGpsData);
 
 
     foreach (stGPSdata currentDataSet, oldGpsData)
@@ -323,7 +343,13 @@ void MainWindow::resendOldData()
         //and don't save the data again in the buffer, because it's already saved
         sendDataToServer(currentDataSet, false);
         qDebug() << "resend data with timestamp: " + currentDataSet.timeStampRapi + " \n";
+         ui->textEditOutput->append("resend data with timestamp: " + currentDataSet.timeStampRapi + " \n");
     }
 
+}
+
+void MainWindow::updateLogUi(const QString &text)
+{
+    ui->textEditOutput->append(text);
 }
 
