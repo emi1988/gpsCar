@@ -12,12 +12,12 @@ class dbManager: public QObject
     Q_OBJECT
 public:
     dbManager();
-    dbManager(QString& path);
 
     bool addGpsData(QString data);
     bool removeGpsData(QString timeStampRapi);
     bool getOldGpsData(QString maxTimestampRapi, QList<stGPSdata> &selectedData);
 
+    void initDb(QString &path);
 signals:
     void  sendText(const QString &text);
 

@@ -15,10 +15,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     //init the database for buffering the gps data if there's no network
-    QString dbPath = QDir::currentPath() + "/sendBuffer.db";
-    m_dbManager = new dbManager(dbPath);
-
+    m_dbManager = new dbManager();
     connect(m_dbManager, SIGNAL(sendText(QString)), this, SLOT(updateLogUi(QString)));
+
+    QString dbPath = QDir::currentPath() + "/sendBuffer.db";
+    ui->textEditOutput->append("DB-Path:" + dbPath);
+
+    m_dbManager->initDb(dbPath);
 
     m_secondsBetweenWebSend = 5;
     m_lastSendetTime = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000;
@@ -252,7 +255,7 @@ void MainWindow::serialDataReceived()
 
                 foreach (QString sentenceData, singleSentenceData)
                 {
-                     ui->textEditOutput->append(sentenceData);
+                //     ui->textEditOutput->append(sentenceData);
                 }
 
                 qDebug() << "RapiTimestamp: " << currentTime;

@@ -9,15 +9,22 @@ dbManager::dbManager()
 
 }
 
-dbManager::dbManager(QString &path)
+void dbManager::initDb(QString &path)
 {
-    //first check if database already exists
+        //first check if database already exists
+
     bool dbExists = QFile::exists(path);
 
-    if(dbExists == false)
+    if(dbExists == true)
     {
-        qDebug() << "Error: dbPath doesn't exist" + path;
-        emit sendText("Error: dbPath doesn't exist" + path);
+        qDebug() << "dbPath exist: " + path;
+        emit sendText("dbPath exist: " + path);
+
+    }
+    else
+    {
+        qDebug() << "Error: dbPath doesn't exist: " + path;
+        emit sendText("Error: dbPath doesn't exist: " + path);
     }
 
     //if db doesn't exist it's automatically created
@@ -56,6 +63,7 @@ dbManager::dbManager(QString &path)
         }
     }
 }
+
 
 bool dbManager::addGpsData(QString data)
 {
