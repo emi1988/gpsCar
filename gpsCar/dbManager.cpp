@@ -14,6 +14,12 @@ dbManager::dbManager(QString &path)
     //first check if database already exists
     bool dbExists = QFile::exists(path);
 
+    if(dbExists == false)
+    {
+        qDebug() << "Error: dbPath doesn't exist" + path;
+        emit sendText("Error: dbPath doesn't exist" + path);
+    }
+
     //if db doesn't exist it's automatically created
     m_sqliteDb = QSqlDatabase::addDatabase("QSQLITE");
     m_sqliteDb.setDatabaseName(path);
